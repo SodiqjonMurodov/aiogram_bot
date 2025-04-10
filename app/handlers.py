@@ -1,9 +1,11 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, KeyboardButton
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from app.middlewares import TestMiddleware
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram import types
 
 import app.keyboards as kb
 
@@ -81,3 +83,72 @@ async def reg_third_step(message: Message, state: FSMContext):
     await state.clear() # clear statement cache
 
 
+@router.message(Command("reply_builder"))
+async def reply_builder(message: Message):
+    builder = ReplyKeyboardBuilder()
+    for i in range(1, 17):
+        builder.add(KeyboardButton(text=str(i)))
+    builder.adjust(4)
+    await message.answer(
+        "Выберите число:",
+        reply_markup=builder.as_markup(resize_keyboard=True, one_time_keyboard=True),
+    )
+
+
+@router.message(Command("special_buttons"))
+async def cmd_special_buttons(message: types.Message):
+    builder = ReplyKeyboardBuilder()
+    # метод row позволяет явным образом сформировать ряд
+    # из одной или нескольких кнопок. Например, первый ряд
+    # будет состоять из двух кнопок...
+    builder.row(
+        types.KeyboardButton(text="Запросить геолокацию", request_location=True),
+        types.KeyboardButton(text="Запросить контакт", request_contact=True)
+    )
+    # ... второй из одной ...
+    builder.row(types.KeyboardButton(
+        text="Создать викторину",
+        request_poll=types.KeyboardButtonPollType(type="quiz"))
+    )
+    # ... а третий снова из двух
+    builder.row(
+        types.KeyboardButton(
+            text="Выбрать премиум пользователя",
+            request_user=types.KeyboardButtonRequestUser(
+                request_id=1,
+                user_is_premium=True
+            )
+        ),
+        types.KeyboardButton(
+            text="Выбрать супергруппу с форумами",
+            request_chat=types.KeyboardButtonRequestChat(
+                request_id=2,
+                chat_is_channel=False,
+                chat_is_forum=True
+            )
+        )
+    )
+    # WebApp-ов пока нет, сорри :(
+
+    await message.answer(
+        "Выберите действие:",
+        reply_markup=builder.as_markup(resize_keyboard=True),
+    )
+
+
+@router.message(F.user_shared)
+async def on_user_shared(message: types.Message):
+    print(
+        f"Request {message.user_shared.request_id}. "
+        f"User ID: {message.user_shared.user_id}"
+    )
+
+
+@router.message(F.chat_shared)
+async def on_user_shared(message: types.Message):
+    print(
+        f"Request {message.chat_shared.request_id}. "
+        f"User ID: {message.chat_shared.chat_id}"
+    )
+
+    
